@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euo pipefail
+
+HOSTNAME=${HOSTNAME:-}
+IP=${IP:-}
+
+# Set a hostname
+if [[ -z ${HOSTNAME} ]]; then
+    HOSTNAME=$(cat /dev/urandom | tr -dc [:alnum:] | head -c8 || true)
+    echo "Setting random hostname ${HOSTNAME}"
+else
+    echo "Setting hostname ${HOSTNAME}"
+fi
+echo "${HOSTNAME}" > /etc/hostname
+
+# Set an IP for eth0
+if [[ -z ${IP} ]]; then 
+    echo "Setting dhcp IP"
+    cp config-hooks/net-dhcp-template.yaml /etc/netplan/01-netcfg.yaml
+else
+    echo "Setting static IP ${IP}"
+    cat config-hooks/net-static-template.yaml | envsubst > /etc/netplan/01-netcfg.yaml
+fi
+
+echo "Disabling cloud-init network config"
+cat << EOF > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+network: {config: disable}
+EOF

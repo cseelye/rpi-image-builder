@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+
+export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+export DEBIAN_FRONTEND=noninteractive
+
+# Add Kubernetes repo
+curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+echo "deb [arch=arm64] http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
+
+apt-get update
+
+# Install kubernetes packages
+apt-get install --yes kubeadm kubectl kubelet
+
+# Enable IP forwarding so NodePorts work
+cat << EOF > /etc/sysctl.d/20-k8s-ip-forwarding.conf
+net.ipv4.ip_forward=1
+net.ipv4.ip_nonlocal_bind=1
+net.bridge.bridge-nf-call-iptables=1
+net.bridge.bridge-nf-call-arptables=1
+EOF
+
+# Enable memory cgroup subsystem
+sed -e 's/$/ cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory/' -i /boot/firmware/nobtcmd.txt 
+sed -e 's/$/ cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory/' -i /boot/firmware/btcmd.txt 

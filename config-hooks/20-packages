@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+export DEBIAN_FRONTEND=noninteractive
+
+add-apt-repository --yes ppa:ubuntu-raspi2/ppa
+
+apt-get update
+
+# Install useful packages
+apt-get install --yes \
+    arptables \
+    avahi-daemon \
+    curl \
+    iperf3 \
+    iptables \
+    jq \
+    ebtables \
+    libraspberrypi-bin \
+    nfs-common \
+    sysbench \
+    tree \
+    vim

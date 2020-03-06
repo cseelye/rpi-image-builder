@@ -1,0 +1,173 @@
+#!/bin/bash
+set -euo pipefail
+
+COMPRESS=${COMPRESS:-0}
+BASE_IMAGE_URL=${BASE_IMAGE_URL:-http://cdimage.ubuntu.com/ubuntu/releases/18.04/release/ubuntu-18.04.4-preinstalled-server-arm64+raspi3.img.xz}
+BASE_IMAGE=${BASE_IMAGE:-ubuntu-18.04.4-preinstalled-server-arm64+raspi3.img.xz}
+FINAL_IMAGE=${FINAL_IMAGE:-custom-rpi.img}
+DOCKER=${DOCKER:-0}
+DOCKER_IMAGE=${DOCKER_IMAGE:-custom-rpi-image}
+ARTIFACT_DIR=${ARTIFACT_DIR:-artifacts}
+WORK_DIR=${WORK_DIR:-work}
+CHROOT=${CHROOT:-${WORK_DIR}/chroot}
+
+if [[ -e /tmp/envfile ]]; then
+    source /tmp/envfile
+fi
+
+
+function unmount_special()
+{
+    for mnt in ${CHROOT}/dev ${CHROOT}/sys ${CHROOT}/proc; do
+        while mountpoint -q ${mnt} && ! umount -R ${mnt}; do
+            sleep 1
+        done
+    done
+}
+function restore_chroot_resolver()
+{
+    # Fix resolv.conf in the chroot
+    if [[ -e "${CHROOT}"/etc ]]; then
+        (
+            cd "${CHROOT}"/etc
+            rm --one-file-system --force resolv.conf
+            ln -s ../run/systemd/resolve/stub-resolv.conf resolv.conf
+        )
+    fi
+}
+function unmount_chroot()
+{
+    restore_chroot_resolver
+    sync
+    unmount_special
+    for mnt in ${CHROOT}/boot/firmware ${CHROOT}; do
+        while mountpoint -q ${mnt} && ! umount -R ${mnt}; do
+            sleep 1
+        done
+    done
+}
+
+function unmount_image()
+{
+    lodev=$(losetup --associated "${WORK_DIR}"/"${working_image}" --noheadings --output NAME)
+    if [[ -n "${lodev}" ]]; then
+         losetup --detach ${lodev}
+    fi
+}
+
+function cleanup()
+{
+    echo ">>> Cleanup"
+    set +eu
+
+    unmount_chroot
+    unmount_image
+
+    rm --one-file-system --force --recursive "${WORK_DIR}"
+    exit
+}
+
+
+mkdir -p "${ARTIFACT_DIR}"
+mkdir -p "${WORK_DIR}"
+mkdir -p "${CHROOT}"
+
+[[ "$UID" -eq 0 ]] || exec sudo "$0" "$@"
+
+if [[ -e "${BASE_IMAGE}" ]]; then
+    mv "${BASE_IMAGE}" artifacts/
+fi
+
+if [[ ! -e "${ARTIFACT_DIR}"/"${BASE_IMAGE}" ]]; then
+    curl -kL ${BASE_IMAGE_URL} -o "${ARTIFACT_DIR}"/"${BASE_IMAGE}"
+fi
+
+trap cleanup EXIT INT TERM HUP
+
+echo ">>> Decompressing base image"
+stock_image="${BASE_IMAGE%.*}"
+if [[ ! -e "${ARTIFACT_DIR}"/"${stock_image}" ]]; then
+    nice -n 19 pxz --decompress --keep "${ARTIFACT_DIR}"/"${BASE_IMAGE}"
+fi
+
+# The image has very little free space and must be expanded to be able to install/configure
+# When the pi first boots it automatically expands the partititon to the full size of the SD card, this does not change that
+# Expand the size of the image here, then expand the partition and fielsystem after mounting the image
+echo ">>> Expanding image"
+working_image=working.img
+cp "${ARTIFACT_DIR}"/"${stock_image}" "${WORK_DIR}"/"${working_image}"
+dd if=/dev/zero bs=1M count=1024 >> "${WORK_DIR}"/"${working_image}"
+parted -s "${WORK_DIR}"/"${working_image}" resizepart 2 -- -1s
+
+echo ">>> Mounting image"
+if ! losetup --all --output NAME,BACK-FILE | grep -q "${working_image}"; then
+    losetup --find --partscan "${WORK_DIR}"/"${working_image}"
+fi
+lodev=$(losetup --associated "${WORK_DIR}"/"${working_image}" --noheadings --output NAME)
+
+# Workaround udev not existing in container, so we need to create the partition devices manually
+major_min=$(lsblk --noheadings --output NAME,MAJ:MIN  --list ${lodev} | grep p1 | awk '{print $2}' | tr ':' ' ')
+mknod ${lodev}p1 b ${major_min}
+major_min=$(lsblk --noheadings --output NAME,MAJ:MIN  --list ${lodev} | grep p2 | awk '{print $2}' | tr ':' ' ')
+mknod ${lodev}p2 b ${major_min}
+
+echo ">>> Expanding filesystem"
+parted -s ${lodev} resizepart 2 100%
+e2fsck -f ${lodev}p2
+resize2fs ${lodev}p2
+
+echo ">>> Preparing chroot"
+mount -o rw ${lodev}p2 "${CHROOT}"
+mkdir -p "${CHROOT}"/boot/firmware
+mount -o rw ${lodev}p1 "${CHROOT}"/boot/firmware
+
+mount -t proc proc ${CHROOT}/proc
+mount --rbind /dev ${CHROOT}/dev
+mount --rbind /sys ${CHROOT}/sys
+
+# Use the host resolver config so the chroot has connectivity
+rm --one-file-system --force "${CHROOT}"/etc/resolv.conf
+cp --force /etc/resolv.conf ${CHROOT}/etc/resolv.conf
+
+# Debug - jump into the chroot to poke around
+# chroot ${CHROOT} bash
+# exit
+
+# Copy the files from the overlay directory into the corresponding location in the chroot
+( set -x; rsync -axv --chown root:root --exclude README.md overlay/ ${CHROOT} )
+
+# Copy the config-hooks into the chroot and then run each one
+rsync -aLxq config-hooks ${CHROOT}
+for hook in $(find ${CHROOT}/config-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
+    echo ">>> Executing config hook $(basename ${hook})"
+    (
+        chroot ${CHROOT} config-hooks/$(basename ${hook})
+    ) 2>&1 | sed 's/^/    /'
+done
+rm --one-file-system --force --recursive ${CHROOT}/config-hooks
+sync
+sleep 1
+echo ">>> Finished configuring image"
+
+restore_chroot_resolver
+unmount_special
+
+if [[ ${DOCKER} -eq 1 ]]; then
+    echo ">>> Importing docker image"
+    tar -C ${CHROOT} -c . | docker image import - ${DOCKER_IMAGE}
+fi
+
+unmount_chroot
+unmount_image
+
+if [[ ${COMPRESS} -eq 1 ]]; then
+    echo ">>> Compressing image"
+    nice -n 19 xz --compress -8 --thread=0 "${WORK_DIR}"/"${working_image}"
+    mv --force "${WORK_DIR}"/"${working_image}"* "${ARTIFACT_DIR}"/"${FINAL_IMAGE}".xz
+else
+    mv --force "${WORK_DIR}"/"${working_image}" "${ARTIFACT_DIR}"/"${FINAL_IMAGE}"
+fi
+echo
+echo "Created image"
+ls -lhv "${ARTIFACT_DIR}"/"${FINAL_IMAGE}"
+echo
