@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+
+USERNAME=${USERNAME:-local}
+PASSWORD=${PASSWORD:-password}
+
+# Create new user
+useradd --create-home --groups adm,sudo,docker --shell /bin/bash ${USERNAME}
+echo "${USERNAME}:${PASSWORD}" | chpasswd
+
+echo "#cloud-config" > /boot/firmware/user-data
+sed -e '/- users-groups/d' -e "s/name: ubuntu/name: ${USERNAME}/" -e '/lock_passwd/d' -e '/gecos/d' -e '/sudo/d' -i /etc/cloud/cloud.cfg
