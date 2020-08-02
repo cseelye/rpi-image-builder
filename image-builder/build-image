@@ -23,7 +23,7 @@ fi
 function unmount_special()
 {
     for mnt in ${CHROOT}/dev ${CHROOT}/sys ${CHROOT}/proc; do
-        while mountpoint -q ${mnt} && ! umount -R ${mnt}; do
+        while mountpoint --quiet ${mnt} && ! umount --recursive ${mnt}; do
             sleep 1
         done
     done
@@ -45,7 +45,7 @@ function unmount_chroot()
     sync
     unmount_special
     for mnt in ${CHROOT}/boot/firmware ${CHROOT}; do
-        while mountpoint -q ${mnt} && ! umount -R ${mnt}; do
+        while mountpoint --quiet ${mnt} && ! umount --recursive ${mnt}; do
             sleep 1
         done
     done
@@ -72,10 +72,10 @@ function cleanup()
 }
 
 
-mkdir -p "${ARTIFACT_DIR}"
-mkdir -p "${WORK_DIR}"
-mkdir -p "${CHROOT}"
-mkdir -p /tmp
+mkdir --parents "${ARTIFACT_DIR}"
+mkdir --parents "${WORK_DIR}"
+mkdir --parents "${CHROOT}"
+mkdir --parents /tmp
 
 if [[ -e "${BASE_IMAGE}" ]]; then
     mv "${BASE_IMAGE}" artifacts/
@@ -84,7 +84,7 @@ fi
 if [[ ! -e "${ARTIFACT_DIR}"/"${BASE_IMAGE}" ]]; then
     echo ">>> Downloading base image"
     # Download to /tmp and then move into place, in case we get interrupted in the middle we don't want to leave an invalid image
-    curl -kL ${BASE_IMAGE_URL} -o /tmp/"${BASE_IMAGE}"
+    curl --insecure --location ${BASE_IMAGE_URL} --output /tmp/"${BASE_IMAGE}"
     mv /tmp/"${BASE_IMAGE}" "${ARTIFACT_DIR}"/"${BASE_IMAGE}"
 fi
 
@@ -94,7 +94,7 @@ stock_image="${BASE_IMAGE%.*}"
 if [[ ! -e "${ARTIFACT_DIR}"/"${stock_image}" ]]; then
     echo ">>> Decompressing base image"
     # Decompress in /tmp and then move into place, in case we get interrupted in the middle we don't want to leave an invalid image
-    nice -n 19 pixz -d -k "${ARTIFACT_DIR}"/"${BASE_IMAGE}" /tmp/"${stock_image}"
+    nice --adjustment 19 pixz -d -k "${ARTIFACT_DIR}"/"${BASE_IMAGE}" /tmp/"${stock_image}"
     mv /tmp/"${stock_image}" "${ARTIFACT_DIR}"/"${stock_image}"
 fi
 
@@ -108,7 +108,7 @@ cp "${ARTIFACT_DIR}"/"${stock_image}" "${WORK_DIR}"/"${working_image}"
 # Expand the size of the image here, then expand the partition and filesystem after mounting the image
 echo ">>> Increasing free space in image by ${FREE_SPACE} MB"
 dd if=/dev/zero bs=1M count=${FREE_SPACE}ß >> "${WORK_DIR}"/"${working_image}"
-parted -s "${WORK_DIR}"/"${working_image}" resizepart 2 -- -1s
+parted --script "${WORK_DIR}"/"${working_image}" resizepart 2 -- -1s
 
 echo ">>> Mounting image"
 if ! losetup --all --output NAME,BACK-FILE | grep -q "${working_image}"; then
@@ -123,16 +123,16 @@ major_min=$(lsblk --noheadings --output NAME,MAJ:MIN  --list ${lodev} | grep p2 
 mknod ${lodev}p2 b ${major_min}
 
 echo ">>> Expanding filesystem"
-parted -s ${lodev} resizepart 2 100%
+parted --script ${lodev} resizepart 2 100%
 e2fsck -f ${lodev}p2
 resize2fs ${lodev}p2
 
 echo ">>> Preparing chroot"
-mount -o rw ${lodev}p2 "${CHROOT}"
-mkdir -p "${CHROOT}"/boot/firmware
-mount -o rw ${lodev}p1 "${CHROOT}"/boot/firmware
+mount --options rw ${lodev}p2 "${CHROOT}"
+mkdir --parents "${CHROOT}"/boot/firmware
+mount --options rw ${lodev}p1 "${CHROOT}"/boot/firmware
 
-mount -t proc proc ${CHROOT}/proc
+mount --types proc proc ${CHROOT}/proc
 mount --rbind /dev ${CHROOT}/dev
 mount --rbind /sys ${CHROOT}/sys
 
@@ -146,10 +146,10 @@ cp --force /etc/resolv.conf ${CHROOT}/etc/resolv.conf
 
 # Copy the files from the overlay directory into the corresponding location in the chroot
 echo ">>> Applying overlay"
-( set -x; rsync -axv --chown root:root --exclude README.md overlay/ ${CHROOT} )
+( set -x; rsync --verbose --archive --one-file-system --chown root:root --exclude README.md overlay/ ${CHROOT} )
 
 # Copy the config-hooks into the chroot and then run each one
-rsync -aLxq config-hooks ${CHROOT}
+rsync --quiet --archive --copy-links --one-file-system config-hooks ${CHROOT}
 for hook in $(find ${CHROOT}/config-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
     echo ">>> Executing config hook $(basename ${hook})"
     (
@@ -166,7 +166,7 @@ unmount_special
 
 if [[ ${DOCKER} -eq 1 ]]; then
     echo ">>> Importing docker image"
-    tar -C ${CHROOT} -c . | docker image import - ${DOCKER_IMAGE}
+    tar --directory ${CHROOT} --create . | docker image import - ${DOCKER_IMAGE}
 fi
 
 unmount_chroot
@@ -174,12 +174,12 @@ unmount_image
 
 if [[ ${COMPRESS} -eq 1 ]]; then
     echo ">>> Compressing image"
-    nice -n 19 pixz -c -8 "${WORK_DIR}"/"${working_image}"
+    nice --adjustment 19 pixz -c -8 "${WORK_DIR}"/"${working_image}"
     mv --force "${WORK_DIR}"/"${working_image}"* "${ARTIFACT_DIR}"/"${FINAL_IMAGE}".xz
 else
     mv --force "${WORK_DIR}"/"${working_image}" "${ARTIFACT_DIR}"/"${FINAL_IMAGE}"
 fi
 echo
 echo "Created image"
-ls -lhv "${ARTIFACT_DIR}"/"${FINAL_IMAGE}"
+ls -lv --human-readable "${ARTIFACT_DIR}"/"${FINAL_IMAGE}"
 echo
