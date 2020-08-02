@@ -11,9 +11,8 @@ RUN apt-get update && \
         mount \
         qemu-user-static \
         parted \
-        pxz \
+        pixz \
         rsync \
-        systemd-container \
         udev \
         xz-utils && \
     echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) edge" > /etc/apt/sources.list.d/docker.list && \

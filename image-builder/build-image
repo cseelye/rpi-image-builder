@@ -3,13 +3,15 @@ set -euo pipefail
 
 COMPRESS=${COMPRESS:-0}
 BASE_IMAGE_URL=${BASE_IMAGE_URL:-http://cdimage.ubuntu.com/ubuntu/releases/18.04/release/ubuntu-18.04.4-preinstalled-server-arm64+raspi3.img.xz}
-BASE_IMAGE=${BASE_IMAGE:-ubuntu-18.04.4-preinstalled-server-arm64+raspi3.img.xz}
+BASE_IMAGE=${BASE_IMAGE:-${BASE_IMAGE_URL##*/}}
 FINAL_IMAGE=${FINAL_IMAGE:-custom-rpi.img}
 DOCKER=${DOCKER:-0}
 DOCKER_IMAGE=${DOCKER_IMAGE:-custom-rpi-image}
 ARTIFACT_DIR=${ARTIFACT_DIR:-artifacts}
 WORK_DIR=${WORK_DIR:-work}
 CHROOT=${CHROOT:-${WORK_DIR}/chroot}
+
+[[ "$UID" -eq 0 ]] || exec sudo "$0" "$@"
 
 if [[ -e /tmp/envfile ]]; then
     source /tmp/envfile
@@ -71,32 +73,39 @@ function cleanup()
 mkdir -p "${ARTIFACT_DIR}"
 mkdir -p "${WORK_DIR}"
 mkdir -p "${CHROOT}"
-
-[[ "$UID" -eq 0 ]] || exec sudo "$0" "$@"
+mkdir -p /tmp
 
 if [[ -e "${BASE_IMAGE}" ]]; then
     mv "${BASE_IMAGE}" artifacts/
 fi
 
 if [[ ! -e "${ARTIFACT_DIR}"/"${BASE_IMAGE}" ]]; then
-    curl -kL ${BASE_IMAGE_URL} -o "${ARTIFACT_DIR}"/"${BASE_IMAGE}"
+    echo ">>> Downloading base image"
+    # Download to /tmp and then move into place, in case we get interrupted in the middle we don't want to leave an invalid image
+    curl -kL ${BASE_IMAGE_URL} -o /tmp/"${BASE_IMAGE}"
+    mv /tmp/"${BASE_IMAGE}" "${ARTIFACT_DIR}"/"${BASE_IMAGE}"
 fi
 
 trap cleanup EXIT INT TERM HUP
 
-echo ">>> Decompressing base image"
 stock_image="${BASE_IMAGE%.*}"
 if [[ ! -e "${ARTIFACT_DIR}"/"${stock_image}" ]]; then
-    nice -n 19 pxz --decompress --keep "${ARTIFACT_DIR}"/"${BASE_IMAGE}"
+    echo ">>> Decompressing base image"
+    # Decompress in /tmp and then move into place, in case we get interrupted in the middle we don't want to leave an invalid image
+    nice -n 19 pixz -d -k "${ARTIFACT_DIR}"/"${BASE_IMAGE}" /tmp/"${stock_image}"
+    mv /tmp/"${stock_image}" "${ARTIFACT_DIR}"/"${stock_image}"
 fi
+
+# Copy the base image so we leave the base unmodified and only work from our own new image
+echo ">>> Creating new image"
+working_image=working.img
+cp "${ARTIFACT_DIR}"/"${stock_image}" "${WORK_DIR}"/"${working_image}"
 
 # The image has very little free space and must be expanded to be able to install/configure
 # When the pi first boots it automatically expands the partititon to the full size of the SD card, this does not change that
-# Expand the size of the image here, then expand the partition and fielsystem after mounting the image
-echo ">>> Expanding image"
-working_image=working.img
-cp "${ARTIFACT_DIR}"/"${stock_image}" "${WORK_DIR}"/"${working_image}"
-dd if=/dev/zero bs=1M count=1024 >> "${WORK_DIR}"/"${working_image}"
+# Expand the size of the image here, then expand the partition and filesystem after mounting the image
+echo ">>> Increasing free space in image"
+dd if=/dev/zero bs=1M count=2048 >> "${WORK_DIR}"/"${working_image}"
 parted -s "${WORK_DIR}"/"${working_image}" resizepart 2 -- -1s
 
 echo ">>> Mounting image"
@@ -162,7 +171,7 @@ unmount_image
 
 if [[ ${COMPRESS} -eq 1 ]]; then
     echo ">>> Compressing image"
-    nice -n 19 xz --compress -8 --thread=0 "${WORK_DIR}"/"${working_image}"
+    nice -n 19 pixz -c -8 "${WORK_DIR}"/"${working_image}"
     mv --force "${WORK_DIR}"/"${working_image}"* "${ARTIFACT_DIR}"/"${FINAL_IMAGE}".xz
 else
     mv --force "${WORK_DIR}"/"${working_image}" "${ARTIFACT_DIR}"/"${FINAL_IMAGE}"
