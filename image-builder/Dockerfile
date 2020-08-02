@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
@@ -14,7 +14,7 @@ RUN apt-get update && \
         pixz \
         rsync \
         udev \
-        xz-utils && \
+        && \
     echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) edge" > /etc/apt/sources.list.d/docker.list && \
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
     apt-get update && \
