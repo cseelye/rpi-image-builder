@@ -4,7 +4,11 @@ set -euo pipefail
 export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
 export DEBIAN_FRONTEND=noninteractive
 
-add-apt-repository --yes ppa:ubuntu-raspi2/ppa
+# Use the 18.04 version until a 20.04 version is published
+cat << EOF > /etc/apt/sources.list.d/ubuntu-raspi2-ubuntu-ppa-bionic.list
+deb http://ppa.launchpad.net/ubuntu-raspi2/ppa/ubuntu bionic main
+EOF
+apt-key adv --keyserver keyserver.ubuntu.com --receive-keys 6587ffd6536b8826e88a62547876ae518cbcf2f2
 
 apt-get update
 

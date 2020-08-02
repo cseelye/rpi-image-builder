@@ -2,7 +2,7 @@
 set -euo pipefail
 
 COMPRESS=${COMPRESS:-0}
-BASE_IMAGE_URL=${BASE_IMAGE_URL:-http://cdimage.ubuntu.com/ubuntu/releases/18.04/release/ubuntu-18.04.4-preinstalled-server-arm64+raspi3.img.xz}
+BASE_IMAGE_URL=${BASE_IMAGE_URL:-http://cdimage.ubuntu.com/ubuntu/releases/20.04/release/ubuntu-20.04-preinstalled-server-arm64+raspi.img.xz}
 BASE_IMAGE=${BASE_IMAGE:-${BASE_IMAGE_URL##*/}}
 FINAL_IMAGE=${FINAL_IMAGE:-custom-rpi.img}
 DOCKER=${DOCKER:-0}
