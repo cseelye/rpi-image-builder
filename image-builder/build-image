@@ -107,7 +107,7 @@ cp "${ARTIFACT_DIR}"/"${stock_image}" "${WORK_DIR}"/"${working_image}"
 # When the pi first boots it automatically expands the partititon to the full size of the SD card, this does not change that
 # Expand the size of the image here, then expand the partition and filesystem after mounting the image
 echo ">>> Increasing free space in image by ${FREE_SPACE} MB"
-dd if=/dev/zero bs=1M count=${FREE_SPACE}ß >> "${WORK_DIR}"/"${working_image}"
+dd if=/dev/zero bs=1M count=${FREE_SPACE} >> "${WORK_DIR}"/"${working_image}"
 parted --script "${WORK_DIR}"/"${working_image}" resizepart 2 -- -1s
 
 echo ">>> Mounting image"
