@@ -10,9 +10,11 @@ DOCKER_IMAGE=${DOCKER_IMAGE:-custom-rpi-image}
 ARTIFACT_DIR=${ARTIFACT_DIR:-artifacts}
 WORK_DIR=${WORK_DIR:-work}
 CHROOT=${CHROOT:-${WORK_DIR}/chroot}
+FREE_SPACE=${FREE_SPACE:-1024}
 
 [[ "$UID" -eq 0 ]] || exec sudo "$0" "$@"
 
+# Import host environment
 if [[ -e /tmp/envfile ]]; then
     source /tmp/envfile
 fi
@@ -104,8 +106,8 @@ cp "${ARTIFACT_DIR}"/"${stock_image}" "${WORK_DIR}"/"${working_image}"
 # The image has very little free space and must be expanded to be able to install/configure
 # When the pi first boots it automatically expands the partititon to the full size of the SD card, this does not change that
 # Expand the size of the image here, then expand the partition and filesystem after mounting the image
-echo ">>> Increasing free space in image"
-dd if=/dev/zero bs=1M count=2048 >> "${WORK_DIR}"/"${working_image}"
+echo ">>> Increasing free space in image by ${FREE_SPACE} MB"
+dd if=/dev/zero bs=1M count=${FREE_SPACE}ß >> "${WORK_DIR}"/"${working_image}"
 parted -s "${WORK_DIR}"/"${working_image}" resizepart 2 -- -1s
 
 echo ">>> Mounting image"
@@ -143,6 +145,7 @@ cp --force /etc/resolv.conf ${CHROOT}/etc/resolv.conf
 # exit
 
 # Copy the files from the overlay directory into the corresponding location in the chroot
+echo ">>> Applying overlay"
 ( set -x; rsync -axv --chown root:root --exclude README.md overlay/ ${CHROOT} )
 
 # Copy the config-hooks into the chroot and then run each one
