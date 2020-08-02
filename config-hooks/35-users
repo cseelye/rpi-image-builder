@@ -5,7 +5,7 @@ USERNAME=${USERNAME:-local}
 PASSWORD=${PASSWORD:-password}
 
 # Create new user
-useradd --create-home --groups adm,sudo,docker --shell /bin/bash ${USERNAME}
+useradd --create-home --groups adm,sudo,video,docker --shell /bin/bash ${USERNAME}
 echo "${USERNAME}:${PASSWORD}" | chpasswd
 
 echo "#cloud-config" > /boot/firmware/user-data
