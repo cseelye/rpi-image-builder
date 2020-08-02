@@ -7,7 +7,7 @@ docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
 
 # Capture host env variables
 envfile=$(pwd)/.hostenv
-export -p > ${envfile}
+export -p | grep -v "DISPLAY\|HOME\|HOST\|LS_COLORS\|PATH\|PERL\|PWD\|SHELL\|SHLVL\|SSH\|TERM\|TMPDIR\|USER" > ${envfile}
 
 # Run the image builder
 docker container run --rm -it --privileged \
