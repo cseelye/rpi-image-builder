@@ -11,9 +11,9 @@ function mount_image()
     lodev=$(losetup --associated "${image_file}" --noheadings --output NAME)
 
     # Workaround udev not existing in container, so we need to create the partition devices manually
-    major_min=$(lsblk --noheadings --output NAME,MAJ:MIN  --list ${lodev} | grep p1 | awk '{print $2}' | tr ':' ' ')
+    major_min=$(lsblk --noheadings --output NAME,MAJ:MIN  --list ${lodev} | grep $(basename ${lodev})p1 | awk '{print $2}' | tr ':' ' ')
     mknod ${lodev}p1 b ${major_min}
-    major_min=$(lsblk --noheadings --output NAME,MAJ:MIN  --list ${lodev} | grep p2 | awk '{print $2}' | tr ':' ' ')
+    major_min=$(lsblk --noheadings --output NAME,MAJ:MIN  --list ${lodev} | grep $(basename ${lodev})p2 | awk '{print $2}' | tr ':' ' ')
     mknod ${lodev}p2 b ${major_min}
 
     echo ${lodev}

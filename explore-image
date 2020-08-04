@@ -1,12 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-BUILDER_IMAGE=rpi-image-builder
+BUILDER_IMAGE=rpi-image-builder:20.04
 # Build the image builder image
 docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
 
 # Capture host env variables
-envfile=$(pwd)/.hostenv
+envfile=$(mktemp envfile.XXXXXX)
 export -p | grep -v "DISPLAY\|HOME\|HOST=\|LS_COLORS\|PATH\|PERL\|PWD\|SHELL\|SHLVL\|SSH\|TERM\|TMPDIR\|USER" > ${envfile}
 
 # Run the image builder
