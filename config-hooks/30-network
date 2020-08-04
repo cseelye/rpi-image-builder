@@ -11,18 +11,10 @@ if [[ -z ${HOSTNAME} ]]; then
 else
     echo "Setting hostname ${HOSTNAME}"
 fi
-echo "${HOSTNAME}" > /etc/hostname
+echo "hostname: ${HOSTNAME}" >> /boot/firmware/user-data
 
 # Set an IP for eth0
-if [[ -z ${IP} ]]; then 
-    echo "Setting dhcp IP"
-    cp config-hooks/net-dhcp-template.yaml /etc/netplan/01-netcfg.yaml
-else
+if [[ -n ${IP} ]]; then 
     echo "Setting static IP ${IP}"
-    cat config-hooks/net-static-template.yaml | envsubst > /etc/netplan/01-netcfg.yaml
+    cat config-hooks/net-static-template.yaml | envsubst > /boot/firmware/network-config
 fi
-
-echo "Disabling cloud-init network config"
-cat << EOF > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
-network: {config: disable}
-EOF

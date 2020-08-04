@@ -6,7 +6,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Add Kubernetes repo
 curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-echo "deb [arch=arm64] http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
+echo "deb [arch=arm64] http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes-xenial.list
 
 apt-get update
 
