@@ -1,0 +1,25 @@
+diff --git a/install.sh b/install.sh
+index 52316e0..4933476 100755
+--- a/install.sh
++++ b/install.sh
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env sh
+ 
+-systemctl -q is-active log2ram  && { echo "ERROR: log2ram service is still running. Please run \"sudo service log2ram stop\" to stop it."; exit 1; }
++#systemctl -q is-active log2ram  && { echo "ERROR: log2ram service is still running. Please run \"sudo service log2ram stop\" to stop it."; exit 1; }
+ [ "$(id -u)" -eq 0 ] || { echo "You need to be ROOT (sudo can be used)"; exit 1; }
+ 
+ # log2ram
+diff --git a/log2ram.conf b/log2ram.conf
+index b057eab..8ab2a62 100644
+--- a/log2ram.conf
++++ b/log2ram.conf
+@@ -5,7 +5,7 @@
+ # If it's not enough, log2ram will not be able to use ram. Check you /var/log size folder.
+ # The default is 40M and is basically enough for a lot of applications.
+ # You will need to increase it if you have a server and a lot of log for example.
+-SIZE=40M
++SIZE=128M
+ 
+ # This variable can be set to true if you prefer "rsync" rather than "cp".
+ # I use the command cp -u and rsync -X, so I don't copy the all folder every time for optimization.

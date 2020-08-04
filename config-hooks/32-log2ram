@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+
+mkdir --parent /tmp
+old_dir=$(pwd)
+pushd /tmp
+git clone https://github.com/azlux/log2ram.git
+cd log2ram
+patch -p1 < ${old_dir}/config-hooks/log2ram.patch
+chmod +x install.sh
+./install.sh
+popd

@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+# Clean temp dir
+rm --one-file-system --force --recursive /tmp/* /var/tmp/* /var/lib/apt/lists/* || true
