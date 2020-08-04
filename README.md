@@ -5,19 +5,20 @@ Executing create-image will first build the container image, then execute the co
 
 There are two ways to customize the image:  
 * The configuration hooks are executable fragments that live in config-hooks. Any executable file (or link to one) will be run, in lexical order. The hooks are run in the context of the chroot, with root privileges.
-* The overlay directory is an exact mapping ot the root filesystem in the image; any files you place here will be directly copied into the image in the same location.
+* The overlay directory is an exact mapping to the root filesystem in the image; any files you place here will be directly copied into the image in the same location.
 
 This is currently setup to use Ubuntu-based images, but could be easily changed to create Rasbian images, or any other linux, by changing the default `BASE_IMAGE` in `build-image` and creating appropriate config-hooks for the distro.  
 The master branch is based on Ubuntu 18.04, switch to the ubuntu-20.04 branch to base on Ubuntu 20.04.  
 
 ## Building images
 1. Put the files of your choosing into the overlay, and create/customize config-hooks scripts.
-2. Run `./create-image`. 
+2. Add/remove/customize the hooks in config-hooks. Only executable files will be run, so chmod -x will cause a hook to be skipped.
+3. Run `./create-image`. 
     * Optionally use environment variables to set node specific options, eg `HOSTNAME=rpi1 IP=192.168.0.11 CIDR=24 GATEWAY=192.168.0.1 DNS=192.168.0.1 USERNAME=myname PASSWORD=secret ./create-image`
     * Using `COMPRESS=1` will xz compress the image at the end, default is not to compress.
     * Using `DOCKER=1` will import the image into a docker container as well, default is not to import.
-3. Use [Etcher](https://www.balena.io/etcher/) to copy `artifacts/custom-rpi.img` to a microSD card.
-4. Enjoy your pi!
+4. Use [Etcher](https://www.balena.io/etcher/) to copy `artifacts/custom-rpi.img` to a microSD card.
+5. Enjoy your pi!
 
 ## Mounting and exploring images
 `explore-image <image-path>` will allow you to mount an image you have downloaded or created, to poke around and see what it looks like. If you mount the stock ubuntu image, be careful not to modify it, or delete it when you are done so that you have a known starting point for `create-image`.
