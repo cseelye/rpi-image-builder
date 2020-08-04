@@ -1,10 +1,9 @@
-network:
-    version: 2
-    ethernets:
-      eth0:
-        addresses:
-          - ${IP}/${CIDR}
-        gateway4: ${GATEWAY}
-        nameservers:
-          addresses:
-            - ${DNS}
+version: 2
+ethernets:
+  eth0:
+    addresses:
+      - ${IP}/${CIDR}
+    gateway4: ${GATEWAY}
+    nameservers:
+      addresses:
+        - ${DNS}
