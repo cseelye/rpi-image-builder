@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+source image-builder/image.sh
+explore_image "$1"

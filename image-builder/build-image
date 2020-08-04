@@ -19,53 +19,19 @@ if [[ -e /tmp/envfile ]]; then
     source /tmp/envfile
 fi
 
-
-function unmount_special()
-{
-    for mnt in ${CHROOT}/dev ${CHROOT}/sys ${CHROOT}/proc; do
-        while mountpoint --quiet ${mnt} && ! umount --recursive ${mnt}; do
-            sleep 1
-        done
-    done
-}
-function restore_chroot_resolver()
-{
-    # Fix resolv.conf in the chroot
-    if [[ -e "${CHROOT}"/etc ]]; then
-        (
-            cd "${CHROOT}"/etc
-            rm --one-file-system --force resolv.conf
-            ln -s ../run/systemd/resolve/stub-resolv.conf resolv.conf
-        )
-    fi
-}
-function unmount_chroot()
-{
-    restore_chroot_resolver
-    sync
-    unmount_special
-    for mnt in ${CHROOT}/boot/firmware ${CHROOT}; do
-        while mountpoint --quiet ${mnt} && ! umount --recursive ${mnt}; do
-            sleep 1
-        done
-    done
-}
-
-function unmount_image()
-{
-    lodev=$(losetup --associated "${WORK_DIR}"/"${working_image}" --noheadings --output NAME)
-    if [[ -n "${lodev}" ]]; then
-         losetup --detach ${lodev}
-    fi
-}
+source image-builder/image.sh
 
 function cleanup()
 {
     echo ">>> Cleanup"
     set +eu
 
-    unmount_chroot
-    unmount_image
+    if [[ -n "${CHROOT}" ]]; then
+        unmount_chroot "${CHROOT}"
+    fi
+    if [[ -n "${working_image}" ]]; then
+        unmount_image "${WORK_DIR}"/"${working_image}"
+    fi
 
     rm --one-file-system --force --recursive "${WORK_DIR}"
     exit
@@ -111,16 +77,7 @@ dd if=/dev/zero bs=1M count=${FREE_SPACE} >> "${WORK_DIR}"/"${working_image}"
 parted --script "${WORK_DIR}"/"${working_image}" resizepart 2 -- -1s
 
 echo ">>> Mounting image"
-if ! losetup --all --output NAME,BACK-FILE | grep -q "${working_image}"; then
-    losetup --find --partscan "${WORK_DIR}"/"${working_image}"
-fi
-lodev=$(losetup --associated "${WORK_DIR}"/"${working_image}" --noheadings --output NAME)
-
-# Workaround udev not existing in container, so we need to create the partition devices manually
-major_min=$(lsblk --noheadings --output NAME,MAJ:MIN  --list ${lodev} | grep p1 | awk '{print $2}' | tr ':' ' ')
-mknod ${lodev}p1 b ${major_min}
-major_min=$(lsblk --noheadings --output NAME,MAJ:MIN  --list ${lodev} | grep p2 | awk '{print $2}' | tr ':' ' ')
-mknod ${lodev}p2 b ${major_min}
+lodev=$(mount_image "${WORK_DIR}"/"${working_image}")
 
 echo ">>> Expanding filesystem"
 parted --script ${lodev} resizepart 2 100%
@@ -128,17 +85,7 @@ e2fsck -f ${lodev}p2
 resize2fs ${lodev}p2
 
 echo ">>> Preparing chroot"
-mount --options rw ${lodev}p2 "${CHROOT}"
-mkdir --parents "${CHROOT}"/boot/firmware
-mount --options rw ${lodev}p1 "${CHROOT}"/boot/firmware
-
-mount --types proc proc ${CHROOT}/proc
-mount --rbind /dev ${CHROOT}/dev
-mount --rbind /sys ${CHROOT}/sys
-
-# Use the host resolver config so the chroot has connectivity
-rm --one-file-system --force "${CHROOT}"/etc/resolv.conf
-cp --force /etc/resolv.conf ${CHROOT}/etc/resolv.conf
+prepare_chroot "${CHROOT}" ${lodev}
 
 # Debug - jump into the chroot to poke around
 # chroot ${CHROOT} bash
@@ -161,16 +108,17 @@ sync
 sleep 1
 echo ">>> Finished configuring image"
 
-restore_chroot_resolver
-unmount_special
+# Restore the resolve.conf and unmount the special files before creating the docker image
+restore_chroot_resolver "${CHROOT}"
+unmount_special "${CHROOT}"
 
 if [[ ${DOCKER} -eq 1 ]]; then
     echo ">>> Importing docker image"
     tar --directory ${CHROOT} --create . | docker image import - ${DOCKER_IMAGE}
 fi
 
-unmount_chroot
-unmount_image
+unmount_chroot "${CHROOT}"
+unmount_image "${WORK_DIR}"/"${working_image}"
 
 if [[ ${COMPRESS} -eq 1 ]]; then
     echo ">>> Compressing image"

@@ -16,8 +16,11 @@ The master branch is based on Ubuntu 18.04, switch to the ubuntu-20.04 branch to
     * Optionally use environment variables to set node specific options, eg `HOSTNAME=rpi1 IP=192.168.0.11 CIDR=24 GATEWAY=192.168.0.1 DNS=192.168.0.1 USERNAME=myname PASSWORD=secret ./create-image`
     * Using `COMPRESS=1` will xz compress the image at the end, default is not to compress.
     * Using `DOCKER=1` will import the image into a docker container as well, default is not to import.
-3. Use Etcher to copy `artifacts/custom-rpi.img` to a microSD card.
+3. Use [Etcher](https://www.balena.io/etcher/) to copy `artifacts/custom-rpi.img` to a microSD card.
 4. Enjoy your pi!
+
+## Mounting and exploring images
+`explore-image <image-path>` will allow you to mount an image you have downloaded or created, to poke around and see what it looks like. If you mount the stock ubuntu image, be careful not to modify it, or delete it when you are done so that you have a known starting point for `create-image`.
 
 ## Frequently asked Questions
 1. **Why it is so slow?**  
