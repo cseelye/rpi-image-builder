@@ -4,7 +4,7 @@ set -euo pipefail
 export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
 export DEBIAN_FRONTEND=noninteractive
 
-# Add Kubernetes repo
+# Add Kubernetes repo - atm all versions past 16.04 still use the xenial repo
 curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 echo "deb [arch=arm64] http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes-xenial.list
 
