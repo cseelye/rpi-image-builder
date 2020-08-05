@@ -1,11 +1,12 @@
 # rpi-image-builder
 Build customized Raspberry Pi OS images on your x86 desktop/laptop. The image builder runs in a container, so there is nothing else to install and it can run on macOS or Linux (and probably Windows, but untested). 
 
-Executing create-image will first build the container image, then execute the container image. Inside that image, build-image will run, which will download a base ubuntu image, expand it to add space for customizing, copy the files from the overlay into the image, and execute each script from config-hooks in the image chroot. When that is finished, it will save the image and optionally compress it.  
+Executing create-image will first build the container image, then execute the container image. Inside that image, build-image will run, which will download a base ubuntu image, expand it to add space for customizing, copy the files from the overlay into the image, executes each script from outer-hooks, and executes each script from config-hooks in the image chroot. Outer hooks run in the context of the container with access to the mounted image, chroot hooks run inside the context of the mounted image chroot. When the configuration process is finished, it will save the image and optionally compress it or import it as a docker image on the local system.  
 
-There are two ways to customize the image:  
-* The configuration hooks are executable fragments that live in config-hooks. Any executable file (or link to one) will be run, in lexical order. The hooks are run in the context of the chroot, with root privileges.
+There are three ways to customize the image:  
 * The overlay directory is an exact mapping to the root filesystem in the image; any files you place here will be directly copied into the image in the same location.
+* The outer configuration hooks are executable fragments that live in outer-hooks. Any executable file (or link to one) will be run, in lexical order. The hooks are run outside the context of the chroot, with root privileges.
+* The chroot configuration hooks are executable fragments that live in config-hooks. Any executable file (or link to one) will be run, in lexical order. The hooks are run in the context of the chroot, with root privileges.
 
 This is currently setup to use Ubuntu-based images, but could be easily changed to create Rasbian images, or any other linux, by changing the default `BASE_IMAGE` in `build-image` and creating appropriate config-hooks for the distro.  
 The master branch is based on Ubuntu 18.04, switch to the ubuntu-20.04 branch to base on Ubuntu 20.04.  
