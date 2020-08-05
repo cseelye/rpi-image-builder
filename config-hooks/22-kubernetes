@@ -8,7 +8,14 @@ export DEBIAN_FRONTEND=noninteractive
 curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 echo "deb [arch=arm64] http://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes-xenial.list
 
-apt-get update
+set +e
+counter=3
+while [[ ${counter} -gt 0 ]]; do
+    apt-get update && break
+    sleep 60
+    (( counter-- ))
+done
+set -e
 
 # Install kubernetes packages
 apt-get install --yes kubeadm kubectl kubelet
