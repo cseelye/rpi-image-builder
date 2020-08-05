@@ -6,8 +6,9 @@ BUILDER_IMAGE=rpi-image-builder
 docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
 
 # Capture host env variables
-envfile=$(mktemp $(pwd)/envfile.XXXXXX)
+envfile=$(mktemp $(pwd)/.envfile.XXXXXX)
 export -p | grep -v "DISPLAY\|HOME\|HOST=\|LS_COLORS\|PATH\|PERL\|PWD\|SHELL\|SHLVL\|SSH\|TERM\|TMPDIR\|USER" > ${envfile}
+trap 'rm -f ${envfile}' EXIT
 
 # Run the image builder
 docker container run --rm -it --privileged \
