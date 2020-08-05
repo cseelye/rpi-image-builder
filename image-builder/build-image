@@ -91,14 +91,25 @@ prepare_chroot "${CHROOT}" ${lodev}
 # chroot ${CHROOT} bash
 # exit
 
+# Apply the overlay
 # Copy the files from the overlay directory into the corresponding location in the chroot
 echo ">>> Applying overlay"
 ( set -x; rsync --verbose --archive --one-file-system --chown root:root --exclude README.md overlay/ ${CHROOT} )
 
-# Copy the config-hooks into the chroot and then run each one
+# Execute the outer hooks
+export CHROOT
+for hook in $(find outer-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
+    echo ">>> Executing outer hook $(basename ${hook})"
+    (
+        ${hook}
+    ) 2>&1 | sed 's/^/    /'
+done
+
+# Execute the chroot hooks
+# Copy config-hooks into the chroot and then run each one
 rsync --quiet --archive --copy-links --one-file-system config-hooks ${CHROOT}
 for hook in $(find ${CHROOT}/config-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
-    echo ">>> Executing config hook $(basename ${hook})"
+    echo ">>> Executing chroot hook $(basename ${hook})"
     (
         chroot ${CHROOT} config-hooks/$(basename ${hook})
     ) 2>&1 | sed 's/^/    /'
