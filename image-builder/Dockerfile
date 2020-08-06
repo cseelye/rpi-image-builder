@@ -12,9 +12,12 @@ RUN apt-get update && \
         qemu-user-static \
         parted \
         pixz \
+        python3 \
+        python3-pip \
         rsync \
         udev \
         && \
+    pip3 install --upgrade pip && \
     echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) edge" > /etc/apt/sources.list.d/docker.list && \
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
     apt-get update && \
@@ -22,3 +25,4 @@ RUN apt-get update && \
     apt-get autoremove --yes && \
     apt-get clean && \
     rm --force --recursive /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN pip3 install ruamel.yaml
