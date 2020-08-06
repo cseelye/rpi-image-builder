@@ -4,7 +4,7 @@ set -euo pipefail
 export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
 export DEBIAN_FRONTEND=noninteractive
 
-add-apt-repository --yes ppa:ubuntu-raspi2/ppa
+add-apt-repository --yes ppa:ubuntu-pi-flavour-makers/ppa
 
 apt-get update
 
@@ -18,7 +18,9 @@ apt-get install --yes \
     jq \
     ebtables \
     libraspberrypi-bin \
+    linux-firmware-raspi2 \
     nfs-common \
+    rpi-eeprom \
     sysbench \
     tree \
     vim
