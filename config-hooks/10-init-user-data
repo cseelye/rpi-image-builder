@@ -1,5 +1,0 @@
-#!/bin/bash
-set -euo pipefail
-
-# Create a blank cloud-init user-data file. Other hooks may add to this file later
-echo "#cloud-config" > /boot/firmware/user-data

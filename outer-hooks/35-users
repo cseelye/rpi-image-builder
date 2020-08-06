@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+import os
+from io import StringIO
+import subprocess
+from ruamel.yaml import YAML
+
+if __name__ == "__main__":
+
+    chroot_path = os.environ.get("CHROOT", None)
+    if not chroot_path:
+        print("CHROOT is not defined!")
+        exit(1)
+    chroot_path = os.path.abspath(chroot_path)
+
+    username = os.environ.get("UESRNAME", "local")
+    password = os.environ.get("PASSWORD", "password")
+    if not username or not password:
+        exit(0)
+
+    # Hash the password
+    res = subprocess.run("openssl passwd -6 -salt PiSaltPi {}".format(password), shell=True, capture_output=True)
+    if res.returncode != 0:
+        print(res.stderr)
+        print(res.stdout)
+        exit(1)
+
+    passhash = res.stdout.decode("utf-8").strip()
+
+    # Create entry for the user in user-data
+    user_data_file = os.path.join(chroot_path, "boot/firmware/user-data")
+    yaml = YAML(typ="safe")
+    config = None
+    if os.path.exists(user_data_file):
+        with open(user_data_file, "r") as user_data:
+            content = user_data.read()
+        config = yaml.load(content)
+
+    if not config:
+        config = {}
+
+    config["users"] = []
+    config["users"].append({
+        "name": username,
+        "passwd": passhash,
+        "lock-passwd": False,
+        "shell": "/bin/bash",
+        "groups": ["adm", "sudo", "docker", "video"]
+    })
+
+    # Write the config back to the file
+    # Ensure we have the all-important first comment. If the file was previously empty other than this comment, none of the current python yaml libraries will correctly round trip this comment line.
+    buff = StringIO()
+    yaml.dump(config, buff)
+    output = buff.getvalue()
+    if not output.startswith("#cloud-config\n"):
+        output = "#cloud-config\n" + output
+
+    with open(user_data_file, "w") as user_data:
+        user_data.write(output)
