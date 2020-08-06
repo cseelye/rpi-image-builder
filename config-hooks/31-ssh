@@ -1,4 +1,0 @@
-#!/bin/bash
-set -euo pipefail
-
-sed -e 's/PasswordAuthentication no/PasswordAuthentication yes/' -i /etc/ssh/sshd_config

@@ -1,0 +1,30 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ -z "${CHROOT:-}" ]]; then
+    echo "CHROOT is not defined"
+    exit 1
+fi
+
+HOSTNAME=${HOSTNAME:-}
+IP=${IP:-}
+
+# Set a hostname
+if [[ -z ${HOSTNAME} ]]; then
+    HOSTNAME=$(cat /dev/urandom | tr -dc [:alnum:] | head -c8 || true)
+    echo "Setting random hostname ${HOSTNAME}"
+else
+    echo "Setting hostname ${HOSTNAME}"
+fi
+user_data_file="${CHROOT}"/boot/firmware/user-data
+if [[ ! -e "${user_data_file}" ]]; then
+    echo "#cloud-config" > "${user_data_file}"
+fi
+echo "hostname: ${HOSTNAME}" >> "${user_data_file}"
+
+# Set an IP for eth0
+network_data_file="${CHROOT}"/boot/firmware/network-config
+if [[ -n ${IP} ]]; then 
+    echo "Setting static IP ${IP}"
+    cat config-hooks/net-static-template.yaml | envsubst > "${network_data_file}"
+fi
