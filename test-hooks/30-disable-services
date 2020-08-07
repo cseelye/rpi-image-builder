@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ -z "${CHROOT:-}" ]]; then
+    echo "CHROOT is not defined"
+    exit 1
+fi
+
+# Disable the kubelet service because it constantly restarts without a config file, burning CPU in the emulator and clogging the log/screen with messages
+rm --force "${CHROOT}"/var/lib/systemd/deb-systemd-helper-enabled/multi-user.target.wants/kubelet.service
+rm --force "${CHROOT}"/etc/systemd/system/multi-user.target.wants/kubelet.service
