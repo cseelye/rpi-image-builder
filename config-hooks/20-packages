@@ -19,6 +19,7 @@ apt-get install --yes \
     ebtables \
     libraspberrypi-bin \
     linux-firmware-raspi2 \
+    net-tools \
     nfs-common \
     rpi-eeprom \
     sysbench \
