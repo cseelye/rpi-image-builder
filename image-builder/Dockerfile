@@ -6,6 +6,7 @@ RUN apt-get update && \
         binfmt-support \
         ca-certificates \
         curl \
+        gettext-base \
         gnupg2 \
         lsb-release \
         mount \
