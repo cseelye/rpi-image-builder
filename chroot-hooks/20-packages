@@ -5,7 +5,7 @@ export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
 export DEBIAN_FRONTEND=noninteractive
 
 add-apt-repository --yes ppa:ubuntu-pi-flavour-makers/ppa
-
+add-apt-repository --yes ppa:ubuntu-raspi2/ppa
 apt-get update
 
 # Install useful packages
@@ -17,11 +17,14 @@ apt-get install --yes \
     iptables \
     jq \
     ebtables \
-    libraspberrypi-bin \
-    linux-firmware-raspi2 \
     net-tools \
     nfs-common \
-    rpi-eeprom \
     sysbench \
     tree \
     vim
+
+# rpi specific
+apt-get install --yes \
+    libraspberrypi-bin \
+    linux-firmware-raspi2 \
+    raspi-config

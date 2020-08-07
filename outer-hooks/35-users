@@ -18,7 +18,7 @@ if __name__ == "__main__":
         exit(0)
 
     # Hash the password
-    res = subprocess.run("openssl passwd -6 -salt PiSaltPi {}".format(password), shell=True, capture_output=True)
+    res = subprocess.run("openssl passwd -6 -salt PiSaltPi {}".format(password), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
         print(res.stderr)
         print(res.stdout)
