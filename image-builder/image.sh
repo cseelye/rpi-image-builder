@@ -99,7 +99,7 @@ function unmount_image()
 
 function _cleanup
 {
-    echo ">>> Cleanup"
+    echo ">>> Cleanup image mount"
     local chroot_mount="$1"
     local lodev=$2
 
