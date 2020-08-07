@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ -z "${CHROOT:-}" ]]; then
+    echo "CHROOT is not defined"
+    exit 1
+fi
+
+# Create an fstab for the image to boot from the vda devices qemu generates instead of the SD card
+mv "${CHROOT}"/etc/fstab "${CHROOT}"/etc/fstab.orig
+cat << EOF > "${CHROOT}"/etc/fstab
+/dev/vda2   /               ext4    defaults    0 0
+/dev/vda1   /boot/firmware  vfat    defaults    0 1
+EOF
