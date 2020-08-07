@@ -106,15 +106,15 @@ for hook in $(find outer-hooks -maxdepth 1 -executable -type f -o -type l | sort
 done
 
 # Execute the chroot hooks
-# Copy config-hooks into the chroot and then run each one
-rsync --quiet --archive --copy-links --one-file-system config-hooks ${CHROOT}
-for hook in $(find ${CHROOT}/config-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
+# Copy chroot-hooks into the chroot and then run each one
+rsync --quiet --archive --copy-links --one-file-system chroot-hooks ${CHROOT}
+for hook in $(find ${CHROOT}/chroot-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
     echo ">>> Executing chroot hook $(basename ${hook})"
     (
-        chroot ${CHROOT} config-hooks/$(basename ${hook})
+        chroot ${CHROOT} chroot-hooks/$(basename ${hook})
     ) 2>&1 | sed 's/^/    /'
 done
-rm --one-file-system --force --recursive ${CHROOT}/config-hooks
+rm --one-file-system --force --recursive ${CHROOT}/chroot-hooks
 sync
 sleep 1
 echo ">>> Finished configuring image"

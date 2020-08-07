@@ -26,5 +26,5 @@ echo "hostname: ${HOSTNAME}" >> "${user_data_file}"
 network_data_file="${CHROOT}"/boot/firmware/network-config
 if [[ -n ${IP} ]]; then 
     echo "Setting static IP ${IP}"
-    cat config-hooks/net-static-template.yaml | envsubst > "${network_data_file}"
+    cat outer-hooks/net-static-template.yaml | envsubst > "${network_data_file}"
 fi
