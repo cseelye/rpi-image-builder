@@ -1,0 +1,55 @@
+#!/bin/bash
+set -euo pipefail
+
+if ! which qemu-system-aarch64 &>/dev/null; then
+    echo "Please install qemu"
+    exit 1
+fi
+
+image_file="$1"
+image_ip=${2-}
+base_dir=$(mktemp -d)
+INIT=${INIT:-}
+
+# Get the fully resolved path to the temp dir, to work around the docker file sharing restrictions in macOS
+base_dir=$(cd "${base_dir}"; pwd -P)
+trap 'rm -rf "${base_dir}"' EXIT ERR INT TERM HUP
+
+# Make a copy of the image so that we don't damage the original, or negate any first-boot activites
+echo ">>> Copying image"
+cp "${image_file}" "${base_dir}"/
+
+# Do any fixups necessary in the image and get a copy of the kernel, initrd, etc from the image
+echo ">>> Prepping image and extracting kernel"
+BUILDER_IMAGE=rpi-image-builder:20.04
+docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
+docker container run --rm -it --privileged \
+                     --mount type=bind,src="${base_dir}",dst=/dest \
+                     --mount type=bind,src=$(pwd),dst=/builder \
+                     --workdir /builder \
+                     ${BUILDER_IMAGE} \
+                     image-builder/prep-image-emulation "${image_file}" /dest
+boot_image="${base_dir}"/$(basename "${image_file}")
+kernel_file="${base_dir}"/boot/vmlinuz
+initrd_file="${base_dir}"/boot/initrd.img
+cmdline="rw root=/dev/vda2 console=ttyAMA0 loglevel=8 rootwait fsck.repair=yes memtest=1"
+if [[ -n "${INIT}" ]]; then
+    cmdline="${cmdline} init=${INIT}"
+fi
+
+# Launch qemu to boot the image
+echo ">>> Starting Pi"
+qemu-system-aarch64 \
+    -name rpi \
+    -cpu cortex-a53 \
+    -m 1024 \
+    -machine virt \
+    -nographic \
+    -serial mon:stdio \
+    -netdev user,id=net0,hostfwd=tcp::5522-${image_ip}:22 \
+    -device virtio-net-device,netdev=net0 \
+    -drive file="${boot_image}",format=raw,if=sd,id=hd-root \
+    -device virtio-blk-device,drive=hd-root \
+    -append "${cmdline}" \
+    -kernel "${kernel_file}" \
+    -initrd "${initrd_file}"

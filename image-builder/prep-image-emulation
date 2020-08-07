@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+image_file="$1"
+dest="$2"
+
+source image-builder/image.sh
+
+CHROOT=$(mktemp -d)
+
+trap "_cleanup ${CHROOT} ${image_file}" EXIT INT TERM HUP
+
+echo ">>> Mounting image"
+mkdir --parents "${CHROOT}"
+lodev=$(mount_image "${image_file}")
+
+echo ">>> Preparing chroot"
+prepare_chroot "${CHROOT}" ${lodev}
+
+echo ">>> Copying files"
+cp -r "${CHROOT}"/boot "${dest}"
+
+echo ">>> Patching image"
+
+# Execute the test hooks
+export CHROOT
+for hook in $(find test-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
+    echo ">>> Executing test hook $(basename ${hook})"
+    (
+        ${hook}
+    ) 2>&1 | sed 's/^/    /'
+done
+
+
+# cleanup automatically runs on exit
