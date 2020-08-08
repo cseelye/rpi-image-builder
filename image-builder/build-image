@@ -2,7 +2,7 @@
 set -euo pipefail
 
 COMPRESS=${COMPRESS:-0}
-BASE_IMAGE_URL=${BASE_IMAGE_URL:-http://cdimage.ubuntu.com/ubuntu/releases/20.04/release/ubuntu-20.04-preinstalled-server-arm64+raspi.img.xz}
+BASE_IMAGE_URL=${BASE_IMAGE_URL:-http://cdimage.ubuntu.com/ubuntu/releases/20.04/release/ubuntu-20.04.1-preinstalled-server-arm64+raspi.img.xz}
 BASE_IMAGE=${BASE_IMAGE:-${BASE_IMAGE_URL##*/}}
 FINAL_IMAGE=${FINAL_IMAGE:-custom-rpi.img}
 DOCKER=${DOCKER:-0}
@@ -50,7 +50,11 @@ fi
 if [[ ! -e "${ARTIFACT_DIR}"/"${BASE_IMAGE}" ]]; then
     echo ">>> Downloading base image"
     # Download to /tmp and then move into place, in case we get interrupted in the middle we don't want to leave an invalid image
-    curl --insecure --location ${BASE_IMAGE_URL} --output /tmp/"${BASE_IMAGE}"
+    curl --location ${BASE_IMAGE_URL} --output /tmp/"${BASE_IMAGE}"
+    if file --brief /tmp/"${BASE_IMAGE}" | grep -q HTML; then
+        cat /tmp/"${BASE_IMAGE}"
+        exit 1
+    fi
     mv /tmp/"${BASE_IMAGE}" "${ARTIFACT_DIR}"/"${BASE_IMAGE}"
 fi
 
