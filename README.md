@@ -1,8 +1,8 @@
 # rpi-image-builder
 Build and test customized Raspberry Pi OS images on your x86 desktop/laptop. Most of the work runs in a container, so there is nothing else to install and it can run on macOS or Linux (and probably Windows Docker/WSL2, but untested). This repo contains tools to create images, mount and explore an image, and test an image by booting it up using qemu.  
 
-This is currently setup to use Ubuntu-based images, but could be changed to create Rasbian images, or any other linux, by changing the default `BASE_IMAGE` in `build-image` and creating appropriate hooks for the distro.  
-The main branch is based on Ubuntu 18.04, switch to the ubuntu-20.04 branch to base on Ubuntu 20.04.  
+This is currently setup to use Ubuntu-based server images, but could be changed to create Rasbian images, or any other linux, by changing the default `BASE_IMAGE` in `build-image` and creating appropriate hooks for the distro.  
+The main branch is based on Ubuntu 18.04.4, switch to the ubuntu-20.04 branch to base on Ubuntu 20.04.1.  
 
 ## Building images
 Quick start:
@@ -26,7 +26,7 @@ There are three ways to customize the image:
 `explore-image <image-path>` will allow you to mount an image you have downloaded or created, to poke around and see what it looks like. If you mount the stock ubuntu image, be careful not to modify it, or delete it when you are done so that you have a known starting point for `create-image`.
 
 ## Running images in QEMU
-`test-image <image-path>` will boot up a copy of your image in QEMU, allowing you to test it before deploying to your Pi. This allows you to try out your customizations and first-boot configs without wearing out your SD cards or connecting a monitor to your Pi. You must have qemu installed for your host system before running this script.  
+`test-image <image-path>` will boot up a copy of your image in QEMU, allowing you to test it before deploying to your Pi. This allows you to try out your customizations and first-boot configs without wearing out your SD cards or connecting a monitor to your Pi. You must have qemu installed for your host system before running this script. `brew isntall qemu` or `apt-get install qemu` etc.  
 
 Note that this is booting an ephemeral copy of the image, not the original, so any modifications you make will be lost. This is done to preserve first-boot customizing that you want to happen on the Pi itself, not in the emulator.  
 
