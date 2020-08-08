@@ -7,6 +7,7 @@ export DEBIAN_FRONTEND=noninteractive
 add-apt-repository --yes ppa:ubuntu-pi-flavour-makers/ppa
 add-apt-repository --yes ppa:ubuntu-raspi2/ppa
 apt-get update
+apt-get dist-upgrade --yes
 
 # Install useful packages
 apt-get install --yes \
