@@ -1,0 +1,11 @@
+{
+	"name": "rpi-image-builder",
+	"context": "../image-builder",
+	"dockerFile": "../image-builder/Dockerfile",
+	"settings": { 
+		"terminal.integrated.shell.linux": null
+	},
+	"extensions": [
+		"ms-python.python"
+	]
+}

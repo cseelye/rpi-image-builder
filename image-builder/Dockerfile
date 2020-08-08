@@ -26,4 +26,4 @@ RUN apt-get update && \
     apt-get autoremove --yes && \
     apt-get clean && \
     rm --force --recursive /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN pip3 install ruamel.yaml
+RUN pip3 install pylint ruamel.yaml
