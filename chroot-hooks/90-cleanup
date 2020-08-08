@@ -1,5 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+apt-get autoremove --yes
+apt-get clean
+
 # Clean temp dir
 rm --one-file-system --force --recursive /tmp/* /var/tmp/* /var/lib/apt/lists/* || true
