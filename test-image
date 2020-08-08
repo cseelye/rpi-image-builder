@@ -6,7 +6,7 @@ if ! which qemu-system-aarch64 &>/dev/null; then
     exit 1
 fi
 
-image_file="$1"
+source_image="$1"
 image_ip=${2-}
 base_dir=$(mktemp -d)
 INIT=${INIT:-}
@@ -17,19 +17,25 @@ trap 'rm -rf "${base_dir}"' EXIT ERR INT TERM HUP
 
 # Make a copy of the image so that we don't damage the original, or negate any first-boot activites
 echo ">>> Copying image"
-cp "${image_file}" "${base_dir}"/
+host_image_path="${base_dir}/test-image.img"
+image_file=$(basename "${host_image_path}")
+cp "${source_image}" "${host_image_path}"
 
 # Do any fixups necessary in the image and get a copy of the kernel, initrd, etc from the image
 echo ">>> Prepping image and extracting kernel"
+# Host basedir maps to container_imagedir inside the container
+container_imagedir=/work
+container_image_path="${container_imagedir}/${image_file}"
+
 BUILDER_IMAGE=rpi-image-builder:20.04
 docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
 docker container run --rm -it --privileged \
-                     --mount type=bind,src="${base_dir}",dst=/dest \
+                     --mount type=bind,src="${base_dir}",dst="${container_imagedir}" \
                      --mount type=bind,src=$(pwd),dst=/builder \
                      --workdir /builder \
                      ${BUILDER_IMAGE} \
-                     image-builder/prep-image-emulation "${image_file}" /dest
-boot_image="${base_dir}"/$(basename "${image_file}")
+                     image-builder/prep-image-emulation "${container_image_path}" "${container_imagedir}"
+boot_image="${host_image_path}"
 kernel_file="${base_dir}"/boot/vmlinuz
 initrd_file="${base_dir}"/boot/initrd.img
 cmdline="rw root=/dev/vda2 console=ttyAMA0 loglevel=8 rootwait fsck.repair=yes memtest=1"
