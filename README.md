@@ -26,9 +26,13 @@ There are three ways to customize the image:
 `explore-image <image-path>` will allow you to mount an image you have downloaded or created, to poke around and see what it looks like. If you mount the stock ubuntu image, be careful not to modify it, or delete it when you are done so that you have a known starting point for `create-image`.
 
 ## Running images in QEMU
-`test-image <image-path>` will boot up a copy of your image in QEMU, allowing you to test it before deploying to your Pi. This allows you to try out your customizations and first-boot configs without wearing out your SD cards or connecting a monitor to your Pi. You must have qemu installed for your host system before running this script.  
+`test-image <image-path>` will boot up a copy of your image in QEMU, allowing you to test it before deploying to your Pi. This allows you to try out your customizations and first-boot configs without wearing out your SD cards or connecting a monitor to your Pi. You must have qemu installed for your host system before running this script. `brew install qemu` or `apt-get install qemu` etc.  
 
-Note that this is booting an ephemeral copy of the image, not the original, so any modifications you make will be lost. This is done to preserve first-boot customizing that you want to happen on the Pi itself, not in the emulator.  
+After the image boots, you can SSH into it via `ssh -p 5522 <username>@localhost`. If you set your image to use a static IP, then you will also need to pass the IP and CIDR environmemnt variables to this script for it to setup the qemu user network correctly, eg `IP=192.168.0.11 CIDR=24 ./test-image artifacts/custom-rpi.img`.  
+
+Notes:
+* This is booting an ephemeral copy of the image, not the original, so any modifications you make will be lost. This is done to preserve first-boot customizing that you want to happen on the Pi itself, not in the emulator.
+* qemu is currently impelmented to use a single CPU when emulating ARM, and using the -smp option tends to make the image not boot correctly.
 
 ## Frequently asked Questions
 1. **Why it is so slow?**  
