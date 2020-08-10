@@ -2,12 +2,19 @@ FROM ubuntu:18.04
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+        locales \
+    && \
+    locale-gen en_US.UTF-8
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --yes \
         apt-transport-https \
         binfmt-support \
         ca-certificates \
         curl \
         gettext-base \
         gnupg2 \
+        ipcalc \
         lsb-release \
         mount \
         qemu-user-static \
@@ -27,3 +34,4 @@ RUN apt-get update && \
     apt-get clean && \
     rm --force --recursive /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN pip3 install pylint ruamel.yaml
+
