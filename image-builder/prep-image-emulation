@@ -10,6 +10,11 @@ CHROOT=$(mktemp -d)
 
 trap "_cleanup ${CHROOT} ${image_file}" EXIT INT TERM HUP
 
+# Import host environment
+if [[ -e /tmp/envfile ]]; then
+    source /tmp/envfile
+fi
+
 echo ">>> Mounting image"
 mkdir --parents "${CHROOT}"
 lodev=$(mount_image "${image_file}")

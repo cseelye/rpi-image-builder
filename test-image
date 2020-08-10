@@ -7,13 +7,21 @@ if ! which qemu-system-aarch64 &>/dev/null; then
 fi
 
 source_image="$1"
-image_ip=${2-}
-base_dir=$(mktemp -d)
 INIT=${INIT:-}
+
+base_dir=$(mktemp -d)
+
+# Build the helper image
+BUILDER_IMAGE=rpi-image-builder:20.04
+docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
 
 # Get the fully resolved path to the temp dir, to work around the docker file sharing restrictions in macOS
 base_dir=$(cd "${base_dir}"; pwd -P)
-trap 'rm -rf "${base_dir}"' EXIT ERR INT TERM HUP
+
+envfile=$(mktemp ${base_dir}/.envfile.XXXXXX)
+export -p | grep -v "DISPLAY\|HOME\|HOST=\|LS_COLORS\|PATH\|PERL\|PWD\|SHELL\|SHLVL\|SSH\|TERM\|TMPDIR\|USER" > ${envfile}
+
+trap 'rm -rf "${base_dir}" "${envfile}"' EXIT ERR INT TERM HUP
 
 # Make a copy of the image so that we don't damage the original, or negate any first-boot activites
 echo ">>> Copying image"
@@ -27,10 +35,9 @@ echo ">>> Prepping image and extracting kernel"
 container_imagedir=/work
 container_image_path="${container_imagedir}/${image_file}"
 
-BUILDER_IMAGE=rpi-image-builder:20.04
-docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
 docker container run --rm -it --privileged \
                      --mount type=bind,src="${base_dir}",dst="${container_imagedir}" \
+                     --mount type=bind,src=${envfile},dst=/tmp/envfile \
                      --mount type=bind,src=$(pwd),dst=/builder \
                      --workdir /builder \
                      ${BUILDER_IMAGE} \
@@ -43,8 +50,19 @@ if [[ -n "${INIT}" ]]; then
     cmdline="${cmdline} init=${INIT}"
 fi
 
+# Calculate the network for qemu
+hostfwd="hostfwd=tcp:127.0.0.1:5522-:22"
+if [[ -n "${IP:-}" && -n "${CIDR:-}" ]]; then
+    network=$(docker container run --rm -it \
+                --mount type=bind,src=$(pwd),dst=/builder \
+                ${BUILDER_IMAGE} \
+                ipcalc --nocolor --nobinary ${IP}/${CIDR} | grep Network | tr '/' ' ' | awk '{print $2}')
+    hostfwd="hostfwd=tcp:127.0.0.1:5522-${IP}:22,net=${network}/${CIDR}"
+fi
+
 # Launch qemu to boot the image
 echo ">>> Starting Pi"
+set -x
 qemu-system-aarch64 \
     -name rpi \
     -cpu cortex-a53 \
@@ -52,7 +70,7 @@ qemu-system-aarch64 \
     -machine virt \
     -nographic \
     -serial mon:stdio \
-    -netdev user,id=net0,hostfwd=tcp::5522-${image_ip}:22 \
+    -netdev user,id=net0,${hostfwd} \
     -device virtio-net-device,netdev=net0 \
     -drive file="${boot_image}",format=raw,if=sd,id=hd-root \
     -device virtio-blk-device,drive=hd-root \

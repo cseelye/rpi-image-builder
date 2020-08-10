@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ -z "${CHROOT:-}" ]]; then
+    echo "CHROOT is not defined"
+    exit 1
+fi
+
+# If the image has static IP, reconfigure to work with qemu
+if [[ -n "${IP:-}" && -n "${CIDR:-}" ]]; then
+    network=$(ipcalc --nocolor --nobinary ${IP}/${CIDR} | grep Network | tr '/' ' ' | awk '{print $2}')
+
+    # The host IP/gateway defaults to x.x.x.2 and the DNS to x.x.x.3
+    # https://wiki.qemu.org/Documentation/Networking#User_Networking_.28SLIRP.29
+    gateway=${network%.*}.2
+    dns=${network%.*}.3
+    echo "Detected ip=${IP}, cidr=${CIDR}, network=${network}, gateway=${gateway}, dns=${dns}"
+
+    # Re-configure the network with the same IP/prefix, but gateway and DNS from qemu
+    export GATEWAY=${gateway}
+    export DNS=${dns}
+    network_data_file="${CHROOT}"/boot/firmware/network-config
+    cat outer-hooks/net-static-template.yaml | envsubst > "${network_data_file}"
+fi
