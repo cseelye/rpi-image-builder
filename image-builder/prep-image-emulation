@@ -27,10 +27,10 @@ cp -r "${CHROOT}"/boot "${dest}"
 
 echo ">>> Patching image"
 
-# Execute the test hooks
+# Execute the qemu hooks
 export CHROOT
-for hook in $(find test-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
-    echo ">>> Executing test hook $(basename ${hook})"
+for hook in $(find qemu-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
+    echo ">>> Executing qemu hook $(basename ${hook})"
     (
         ${hook}
     ) 2>&1 | sed 's/^/    /'
