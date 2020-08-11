@@ -1,18 +1,18 @@
 # rpi-image-builder
 Build and test customized Raspberry Pi OS images on your x86 desktop/laptop. Most of the work runs in a container, so there is nothing else to install and it can run on macOS or Linux (and probably Windows Docker/WSL2, but untested). This repo contains tools to create images, mount and explore an image, and test an image by booting it up using qemu.  
 
-This is currently setup to use Ubuntu-based images, but could be changed to create Rasbian images, or any other linux, by changing the default `BASE_IMAGE` in `build-image` and creating appropriate hooks for the distro.  
-The main branch is based on Ubuntu 18.04, switch to the ubuntu-20.04 branch to base on Ubuntu 20.04.  
+This is currently setup to use Ubuntu-based server images, but could be changed to create Rasbian images, or any other linux, by changing the default `BASE_IMAGE` in `build-image` and creating appropriate hooks for the distro.  
+The main branch is based on Ubuntu 20.04.1, switch to the ubuntu-18.04 branch to base on Ubuntu 18.04.4.  
 
 ## Building images
 Quick start:
 1. Put the files of your choosing into the overlay, and create/customize outer-hooks and chroot-hooks scripts.
 2. Add/remove/customize the hooks in outer-hooks and chroot-hooks. Only executable files will be run, so chmod -x will cause a hook to be skipped.
-3. Run `./create-image`. 
-    * Optionally use environment variables to set node specific options, eg `HOSTNAME=rpi1 IP=192.168.0.11 CIDR=24 GATEWAY=192.168.0.1 DNS=192.168.0.1 USERNAME=myname PASSWORD=secret ./create-image`
+3. Run `./create-image <image name>`. 
+    * Optionally use environment variables to set node specific options, eg `HOSTNAME=rpi1 IP=192.168.0.11 CIDR=24 GATEWAY=192.168.0.1 DNS=192.168.0.1 USERNAME=myname PASSWORD=secret ./create-image <image name>`
     * Using `COMPRESS=1` will xz compress the image at the end (default is do not compress).
     * Using `DOCKER=1` will import the image into a docker container as well (default is do not import).
-4. Use [Etcher](https://www.balena.io/etcher/) to copy `artifacts/custom-rpi.img` to a microSD card.
+4. Use [Etcher](https://www.balena.io/etcher/) to copy `artifacts/<image name>` to a microSD card.
 5. Enjoy your pi!
 
 Executing create-image will first build the helper container, then execute that container image. Inside that contaienr, build-image will run, which will download a base ubuntu image, expand it to add space for customizing, mount the image, copy the files from the overlay into the image, execute each script from outer-hooks, and execute each script from chroot-hooks in the image chroot. Outer hooks run in the context of the container with access to the mounted image, chroot hooks run inside the context of the mounted image chroot. When the configuration process is finished, it will save the image and optionally compress it or import it as a docker image on the local system.  

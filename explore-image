@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-BUILDER_IMAGE=rpi-image-builder
+BUILDER_IMAGE=rpi-image-builder:20.04
 # Build the image builder image
 docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
 
