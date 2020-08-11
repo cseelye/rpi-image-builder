@@ -62,17 +62,20 @@ fi
 
 # Launch qemu to boot the image
 echo ">>> Starting Pi"
-qemu-system-aarch64 \
-    -name rpi \
-    -cpu cortex-a53 \
-    -m 1024 \
-    -machine virt \
-    -nographic \
-    -serial mon:stdio \
-    -netdev user,id=net0,${hostfwd} \
-    -device virtio-net-device,netdev=net0 \
-    -drive file="${boot_image}",format=raw,if=sd,id=hd-root \
-    -device virtio-blk-device,drive=hd-root \
-    -append "${cmdline}" \
-    -kernel "${kernel_file}" \
-    -initrd "${initrd_file}"
+#qemu-system-aarch64 \
+docker container run --rm -it --privileged \
+    --volume "${base_dir}":"${base_dir}" \
+    qemu-image \
+        -name rpi \
+        -cpu cortex-a53 \
+        -m 1024 \
+        -machine virt \
+        -nographic \
+        -serial mon:stdio \
+        -netdev user,id=net0,${hostfwd} \
+        -device virtio-net-device,netdev=net0 \
+        -drive file="${boot_image}",format=raw,if=sd,id=hd-root \
+        -device virtio-blk-device,drive=hd-root \
+        -append "${cmdline}" \
+        -kernel "${kernel_file}" \
+        -initrd "${initrd_file}"
