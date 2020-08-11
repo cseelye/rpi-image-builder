@@ -32,7 +32,7 @@ The boot process works by making a copy of your image, customizing it slightly t
 
 Notes:
 * This is booting an ephemeral copy of the image, not the original, so any modifications you make will be lost. This is done to preserve first-boot customizing that you want to happen on the Pi itself, not in the emulator.
-* qemu is currently impelmented to use a single CPU when emulating ARM, and using the -smp option tends to make the image not boot correctly.
+* qemu is currently implemented to use a single CPU when emulating ARM, and using the -smp option tends to make the image not boot correctly.
 * Depending on the speed of your machine, you might see some services timeout and fail during boot.
 
 ## Frequently asked Questions
@@ -40,7 +40,7 @@ Notes:
 This is running the actual ARM image on your x86-based computer, using binfmt/qemu, so it is emulating another CPU type in real time.
 
 2. **Why isn't my Pi booting?**  
-The first time boot takes several minutes. If it still isn't responding, hook up a monitor and see where it's stuck. Don't forget to try it first out with `test-image` before putting it on your Pi.
+The first time boot takes several minutes. If it still isn't responding, hook up a monitor and see where it's stuck. Don't forget to try it first out with `boot-image` before putting it on your Pi.
 
 3. **Why is it failing with 'exec format error' on Linux?**  
 Make sure you have qemu-user and binfmt-support installed.
