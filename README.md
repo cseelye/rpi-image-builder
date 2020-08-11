@@ -2,7 +2,7 @@
 Build and test customized Raspberry Pi OS images on your x86 desktop/laptop. Most of the work runs in a container, so there is nothing else to install and it can run on macOS or Linux (and probably Windows Docker/WSL2, but untested). This repo contains tools to create images, mount and explore an image, and test an image by booting it up using qemu.  
 
 This is currently setup to use Ubuntu-based server images, but could be changed to create Rasbian images, or any other linux, by changing the default `BASE_IMAGE` in `build-image` and creating appropriate hooks for the distro.  
-The main branch is based on Ubuntu 18.04.4, switch to the ubuntu-20.04 branch to base on Ubuntu 20.04.1.  
+The main branch is based on Ubuntu 20.04.1, switch to the ubuntu-18.04 branch to base on Ubuntu 18.04.4.  
 
 ## Building images
 Quick start:
