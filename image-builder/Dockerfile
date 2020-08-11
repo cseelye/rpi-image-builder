@@ -8,10 +8,17 @@ RUN apt-get update && \
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+        locales \
+    && \
+    locale-gen en_US.UTF-8
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --yes \
         apt-transport-https \
         binfmt-support \
         ca-certificates \
         curl \
+        gettext-base \
         gnupg2 \
         ipcalc \
         lsb-release \

@@ -5,7 +5,6 @@ export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
 export DEBIAN_FRONTEND=noninteractive
 
 add-apt-repository --yes ppa:ubuntu-pi-flavour-makers/ppa
-
 apt-get update
 apt-get dist-upgrade --yes
 
