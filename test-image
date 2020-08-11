@@ -12,7 +12,7 @@ INIT=${INIT:-}
 base_dir=$(mktemp -d)
 
 # Build the helper image
-BUILDER_IMAGE=rpi-image-builder
+BUILDER_IMAGE=rpi-image-builder:18.04
 docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
 
 # Get the fully resolved path to the temp dir, to work around the docker file sharing restrictions in macOS
