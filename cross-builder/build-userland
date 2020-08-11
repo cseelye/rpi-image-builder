@@ -1,0 +1,14 @@
+#!/bin/bash
+set -euo pipefail
+
+package_dir="$1"
+userland_repo="https://github.com/raspberrypi/userland"
+repo_dir="$(mktemp -d)"
+start_dir="$(pwd)"
+
+git clone ${userland_repo} "${repo_dir}" --single-branch --branch=master --depth=1
+cd "${repo_dir}"
+./buildme --aarch64
+cd build/arm-linux/release
+make package
+mv "${repo_dir}"/build/arm-linux/release/vmcs_host_apps*.tar.gz "${package_dir}"/userland.tar.gz

@@ -1,4 +1,10 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install --yes \
+        locales \
+    && \
+    locale-gen en_US.UTF-8
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes \

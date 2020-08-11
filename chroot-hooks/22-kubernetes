@@ -29,5 +29,4 @@ net.bridge.bridge-nf-call-arptables=1
 EOF
 
 # Enable memory cgroup subsystem
-sed -e 's/$/ cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory/' -i /boot/firmware/nobtcmd.txt 
-sed -e 's/$/ cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory/' -i /boot/firmware/btcmd.txt 
+sed -e 's/$/ cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory/' -i /boot/firmware/cmdline.txt 
