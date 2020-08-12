@@ -1,0 +1,87 @@
+#!/bin/bash
+set -euo pipefail
+source image-builder/image.sh
+
+# Import host environment
+if [[ -e /tmp/envfile ]]; then
+    source /tmp/envfile
+fi
+
+source_image="$1"
+base_dir=/work
+CHROOT="${base_dir}"/chroot
+
+mkdir --parents "${CHROOT}"
+
+echo ">>> Copying image"
+export image_file=test.img
+image_path="${base_dir}"/"${image_file}"
+cp "${source_image}" "${image_path}"
+
+echo ">>> Getting kernel files from image"
+function _clean_mount()
+{
+    unmount_chroot "${CHROOT}"
+    if [[ -n "${lodev:-}" ]]; then
+        unmount_image ${lodev}
+    fi
+}
+trap _clean_mount EXIT INT TERM HUP
+
+mkdir --parents "${CHROOT}"
+lodev=$(mount_image "${image_path}")
+prepare_chroot "${CHROOT}" ${lodev}
+cp -r "${CHROOT}"/boot "${base_dir}"/
+
+echo ">>> Patching image for qemu"
+# Execute the qemu hooks
+export CHROOT
+for hook in $(find qemu-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
+    echo ">>> Executing qemu hook $(basename ${hook})"
+    (
+        ${hook}
+    ) 2>&1 | sed 's/^/    /'
+done
+trap - EXIT INT TERM HUP
+_clean_mount
+
+# Determine options we need to pass to qemu
+kernel_file="${base_dir}"/boot/vmlinuz
+initrd_file="${base_dir}"/boot/initrd.img
+cmdline="rw root=/dev/vda2 console=ttyAMA0 loglevel=8 rootwait fsck.repair=yes memtest=1"
+if [[ -n "${INIT:-}" ]]; then
+    cmdline="${cmdline} init=${INIT}"
+fi
+export cmdline
+
+# Calculate the network for qemu
+hostfwd="hostfwd=tcp:127.0.0.1:5522-:22"
+if [[ -n "${IP:-}" && -n "${CIDR:-}" ]]; then
+    network=$(ipcalc --nocolor --nobinary ${IP}/${CIDR} | grep Network | tr '/' ' ' | awk '{print $2}')
+    hostfwd="hostfwd=tcp:127.0.0.1:5522-${IP}:22,net=${network}/${CIDR}"
+fi
+export hostfwd
+
+export qemu_cmd='qemu-system-aarch64 \
+    -name rpi \
+    -pidfile "${pidfile}" \
+    -cpu cortex-a53 \
+    -m 1024 \
+    -machine virt \
+    -nographic \
+    -serial mon:stdio \
+    -netdev user,id=net0,${hostfwd} \
+    -device virtio-net-device,netdev=net0 \
+    -drive file="${image_path}",format=raw,if=sd,id=hd-root \
+    -device virtio-blk-device,drive=hd-root \
+    -append "${cmdline}" \
+    -kernel "${kernel_file}" \
+    -initrd "${initrd_file}"'
+
+export -p > "${base_dir}"/qemu_config
+
+if [[ ${HOST_QEMU:-0} -eq 0 ]]; then
+    echo ">>> Starting Pi"
+    pidfile="$(mktemp)"
+    eval "${qemu_cmd}"
+fi
