@@ -28,8 +28,9 @@ RUN apt-get update && \
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
         curl \
-        gettext-base \
         ipcalc \
+        gettext-base \
+        git \
         mount \
         parted \
         pixz \
@@ -44,4 +45,3 @@ RUN apt-get update && \
 
 # Python libraries
 RUN pip3 install pylint ruamel.yaml
-
