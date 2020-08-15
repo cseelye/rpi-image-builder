@@ -1,5 +1,6 @@
 #!/bin/bash
-set -euo pipefail
+set -eEuo pipefail
+export SHELLOPTS
 source image-builder/image.sh
 
 # Import host environment
@@ -8,30 +9,45 @@ if [[ -e /tmp/envfile ]]; then
 fi
 
 source_image="$1"
+IP=${IP:-}
+CIDR=${CIDR:-}
+INIT=${INIT:-}
+HOST_QEMU=${HOST_QEMU:-0}
+BACKGROUND=${BACKGROUND:-0}
 base_dir=/work
 CHROOT="${base_dir}"/chroot
 
 mkdir --parents "${CHROOT}"
 
 echo ">>> Copying image"
-export image_file=test.img
+image_file=test.img
 image_path="${base_dir}"/"${image_file}"
-cp "${source_image}" "${image_path}"
+cp --sparse=always "${source_image}" "${image_path}"
 
 echo ">>> Getting kernel files from image"
 function _clean_mount()
 {
-    unmount_chroot "${CHROOT}"
+    if [[ -n "${CHROOT:-}" ]]; then
+        unmount_chroot "${CHROOT}"
+    fi
     if [[ -n "${lodev:-}" ]]; then
         unmount_image ${lodev}
+        unset lodev
     fi
 }
+function _error()
+{
+    # echo "error $?"
+    _clean_mount
+    exit 1
+}
 trap _clean_mount EXIT INT TERM HUP
+trap _error ERR
 
 mkdir --parents "${CHROOT}"
 lodev=$(mount_image "${image_path}")
 prepare_chroot "${CHROOT}" ${lodev}
-cp -r "${CHROOT}"/boot "${base_dir}"/
+cp --recursive "${CHROOT}"/boot "${base_dir}"/
 
 echo ">>> Patching image for qemu"
 # Execute the qemu hooks
@@ -42,46 +58,63 @@ for hook in $(find qemu-hooks -maxdepth 1 -executable -type f -o -type l | sort)
         ${hook}
     ) 2>&1 | sed 's/^/    /'
 done
-trap - EXIT INT TERM HUP
+trap - ERR EXIT INT TERM HUP
 _clean_mount
+rm --recursive --force --one-file-system "${CHROOT}"
+unset CHROOT
 
 # Determine options we need to pass to qemu
-kernel_file="${base_dir}"/boot/vmlinuz
-initrd_file="${base_dir}"/boot/initrd.img
-cmdline="rw root=/dev/vda2 console=ttyAMA0 loglevel=8 rootwait fsck.repair=yes memtest=1"
-if [[ -n "${INIT:-}" ]]; then
+kernel_file="/boot/vmlinuz"
+kernel_path="${base_dir}"/"${kernel_file}"
+initrd_file="/boot/initrd.img"
+initrd_path="${base_dir}"/"${initrd_file}"
+cmdline="rw root=/dev/vda2 loglevel=8 rootwait fsck.repair=yes memtest=1"
+if [[ -n "${INIT}" ]]; then
     cmdline="${cmdline} init=${INIT}"
 fi
-export cmdline
+
+cmdline="${cmdline} console=ttyAMA0"
+
+if [[ ${BACKGROUND} -eq 1 ]]; then
+    console_opt="-daemonize -monitor none -serial file:vm_console"
+else
+    console_opt="-nographic -serial mon:stdio"
+fi
 
 # Calculate the network for qemu
 hostfwd="hostfwd=tcp:127.0.0.1:5522-:22"
-if [[ -n "${IP:-}" && -n "${CIDR:-}" ]]; then
+if [[ -n "${IP}" && -n "${CIDR}" ]]; then
     network=$(ipcalc --nocolor --nobinary ${IP}/${CIDR} | grep Network | tr '/' ' ' | awk '{print $2}')
     hostfwd="hostfwd=tcp:127.0.0.1:5522-${IP}:22,net=${network}/${CIDR}"
 fi
-export hostfwd
 
-export qemu_cmd='qemu-system-aarch64 \
+qemu_cmd='qemu-system-aarch64 \
     -name rpi \
-    -pidfile "${pidfile}" \
     -cpu cortex-a53 \
     -m 1024 \
     -machine virt \
-    -nographic \
-    -serial mon:stdio \
+    ${console_opt} \
     -netdev user,id=net0,${hostfwd} \
     -device virtio-net-device,netdev=net0 \
+    -pidfile "${pidfile}" \
     -drive file="${image_path}",format=raw,if=sd,id=hd-root \
     -device virtio-blk-device,drive=hd-root \
     -append "${cmdline}" \
-    -kernel "${kernel_file}" \
-    -initrd "${initrd_file}"'
+    -kernel "${kernel_path}" \
+    -initrd "${initrd_path}"'
 
-export -p > "${base_dir}"/qemu_config
-
-if [[ ${HOST_QEMU:-0} -eq 0 ]]; then
+if [[ ${HOST_QEMU} -eq 0 ]]; then
     echo ">>> Starting Pi"
     pidfile="$(mktemp)"
     eval "${qemu_cmd}"
+else
+    # Export the config to be run natively on the host
+    declare -p image_file >> "${base_dir}"/qemu_env
+    declare -p kernel_file >> "${base_dir}"/qemu_env
+    declare -p initrd_file >> "${base_dir}"/qemu_env
+    declare -p console_opt >> "${base_dir}"/qemu_env
+    declare -p cmdline >> "${base_dir}"/qemu_env
+    declare -p hostfwd >> "${base_dir}"/qemu_env
+
+    declare -p qemu_cmd >> "${base_dir}"/qemu_cmd
 fi

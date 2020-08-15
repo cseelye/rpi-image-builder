@@ -1,5 +1,6 @@
 #!/bin/bash
-set -euo pipefail
+set -eEuo pipefail
+export SHELLOPTS
 
 BUILDER_IMAGE=$(cat .image-name)
 
@@ -12,32 +13,52 @@ export HOST_QEMU
 # Build the helper image
 docker image build --rm --force-rm --tag ${BUILDER_IMAGE} image-builder
 
-# Get a fully resolved path to a temp dir, to work around the docker file sharing restrictions in macOS
-temp_dir=$(mktemp -d)
-temp_dir=$(cd "${temp_dir}"; pwd -P)
-trap 'rm -rf "${temp_dir}"' EXIT ERR INT TERM HUP
+#base_dir="artifacts/qemu-boot-${uuid}"
+base_dir="$(mktemp -d)"
+function _remove_basedir()
+{
+    rm -rf "${base_dir}"
+}
 
-envfile=$(mktemp "${temp_dir}"/.envfile.XXXXXX)
+function _error()
+{
+    # echo "error $?"
+    _remove_basedir
+    exit 1
+}
+
+trap _remove_basedir EXIT INT TERM HUP
+trap _error ERR
+
+mkdir -p "${base_dir}"
+base_dir="$(cd "${base_dir}"; pwd -P)" # Make sure we have a fully resolved and absolute path for docker
+if [[ "${base_dir}" == "$(pwd)" ]]; then 
+    exit 1
+fi
+
+envfile=$(mktemp "${base_dir}"/.envfile.XXXXXX)
 export -p | grep -v "DISPLAY\|HOME\|HOST=\|LS_COLORS\|PATH\|PERL\|PWD\|SHELL\|SHLVL\|SSH\|TERM\|TMPDIR\|USER=" > ${envfile}
 
 docker container run --rm -it --privileged \
                      --name rpi-boot-image-$(uuidgen) \
-                     --mount type=bind,src="${envfile}",dst=/tmp/envfile \
-                     --mount type=bind,src="${temp_dir}",dst=/work \
-                     --mount type=bind,src=$(pwd),dst=/builder \
+                     --mount type=bind,src="${envfile}",dst=/tmp/envfile,consistency=delegated \
+                     --mount type=bind,src="${base_dir}",dst=/work,consistency=delegated \
+                     --mount type=bind,src=$(pwd),dst=/builder,consistency=delegated \
                      --workdir /builder \
                      --publish 127.0.0.1:5522:5522 \
                      ${BUILDER_IMAGE} \
                      image-builder/run-image-qemu "${1}"
 
 if [[ ${HOST_QEMU} -eq 1 ]]; then
-    # Import the config created in the container and run it
-    eval "$(cat ${temp_dir}/qemu_config)"
-    pidfile="$(mktemp)"
-    image_path="${temp_dir}"/"${image_file}"
-    kernel_file="${temp_dir}"/boot/vmlinuz
-    initrd_file="${temp_dir}"/boot/initrd.img
+    source "${base_dir}"/qemu_env
+    pidfile="$(mktemp "${base_dir}"/pidfile.XXXXXX)"
+    kernel_path="${base_dir}"/"${kernel_file}"
+    initrd_path="${base_dir}"/"${initrd_file}"
+    image_path="${base_dir}"/"${image_file}"
 
-    echo ">>> Starting Pi (native qemu)"
+    source "${base_dir}"/qemu_cmd
+
+    echo ">>> Starting Pi"
+    echo "    VM base dir=${base_dir}"
     eval "${qemu_cmd}"
 fi
