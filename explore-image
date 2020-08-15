@@ -1,5 +1,6 @@
 #!/bin/bash
-set -euo pipefail
+set -eEuo pipefail
+export SHELLOPTS
 
 BUILDER_IMAGE=$(cat .image-name)
 
