@@ -10,5 +10,5 @@ fi
 mv "${CHROOT}"/etc/fstab "${CHROOT}"/etc/fstab.orig
 cat << EOF > "${CHROOT}"/etc/fstab
 /dev/vda2   /               ext4    defaults    0 0
-/dev/vda1   /boot/firmware  vfat    defaults    0 1
+/dev/vda1   /boot/firmware  vfat    defaults,x-systemd.device-timeout=180s    0 1
 EOF
