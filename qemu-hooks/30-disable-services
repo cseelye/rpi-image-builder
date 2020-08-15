@@ -9,3 +9,9 @@ fi
 # Disable the kubelet service because it constantly restarts without a config file, burning CPU in the emulator and clogging the log/screen with messages
 rm --force "${CHROOT}"/var/lib/systemd/deb-systemd-helper-enabled/multi-user.target.wants/kubelet.service
 rm --force "${CHROOT}"/etc/systemd/system/multi-user.target.wants/kubelet.service
+
+# Disable the check for firmware updates because the script fails when not running on pi hardware
+rm --force "${CHROOT}"/etc/systemd/system/multi-user.target.wants/rpi-eeprom-update.service
+
+# Disable wait for udev because it is unnecessary ans super slow in the VM
+rm --force "${CHROOT}"/usr/lib/systemd/system/systemd-udev-settle.service
