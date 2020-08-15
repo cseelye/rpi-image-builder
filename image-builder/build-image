@@ -1,5 +1,6 @@
 #!/bin/bash
-set -euo pipefail
+set -eEuo pipefail
+export SHELLOPTS
 
 COMPRESS=${COMPRESS:-0}
 BASE_IMAGE_URL=${BASE_IMAGE_URL:-http://cdimage.ubuntu.com/ubuntu/releases/20.04/release/ubuntu-20.04.1-preinstalled-server-arm64+raspi.img.xz}
@@ -65,19 +66,21 @@ if [[ ! -e "${ARTIFACT_DIR}"/"${stock_image}" ]]; then
     echo ">>> Decompressing base image"
     # Decompress in /tmp and then move into place, in case we get interrupted in the middle we don't want to leave an invalid image
     nice --adjustment 19 pixz -d -k "${ARTIFACT_DIR}"/"${BASE_IMAGE}" /tmp/"${stock_image}"
+    fallocate --dig-holes /tmp/"${stock_image}"
     mv /tmp/"${stock_image}" "${ARTIFACT_DIR}"/"${stock_image}"
 fi
 
 # Copy the base image so we leave the base unmodified and only work from our own new image
 echo ">>> Creating new image"
 working_image=working.img
-cp "${ARTIFACT_DIR}"/"${stock_image}" "${WORK_DIR}"/"${working_image}"
+cp --sparse=always "${ARTIFACT_DIR}"/"${stock_image}" "${WORK_DIR}"/"${working_image}"
 
 # The image has very little free space and must be expanded to be able to install/configure
 # When the pi first boots it automatically expands the partititon to the full size of the SD card, this does not change that
 # Expand the size of the image here, then expand the partition and filesystem after mounting the image
 echo ">>> Increasing free space in image by ${FREE_SPACE} MB"
-dd if=/dev/zero bs=1M count=${FREE_SPACE} >> "${WORK_DIR}"/"${working_image}"
+truncate --size=+${FREE_SPACE}M "${WORK_DIR}"/"${working_image}"
+#dd if=/dev/zero bs=1M count=${FREE_SPACE} >> "${WORK_DIR}"/"${working_image}"
 parted --script "${WORK_DIR}"/"${working_image}" resizepart 2 -- -1s
 
 echo ">>> Mounting image"
@@ -112,12 +115,14 @@ done
 # Execute the chroot hooks
 # Copy chroot-hooks into the chroot and then run each one
 rsync --quiet --archive --copy-links --one-file-system chroot-hooks ${CHROOT}
+export -n SHELLOPTS
 for hook in $(find ${CHROOT}/chroot-hooks -maxdepth 1 -executable -type f -o -type l | sort); do
     echo ">>> Executing chroot hook $(basename ${hook})"
     (
         chroot ${CHROOT} chroot-hooks/$(basename ${hook})
     ) 2>&1 | sed 's/^/    /'
 done
+export SHELLOPTS
 rm --one-file-system --force --recursive ${CHROOT}/chroot-hooks
 sync
 sleep 1
