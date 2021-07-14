@@ -1,6 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
+# Disable automatic updates
+cat > /etc/apt/apt.conf.d/20auto-upgrades <<- EOF
+    APT::Periodic::Update-Package-Lists "0";
+    APT::Periodic::Unattended-Upgrade "0";
+EOF
+
 export APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
 export DEBIAN_FRONTEND=noninteractive
 
@@ -10,6 +16,7 @@ apt-get dist-upgrade --yes
 
 # Install useful packages
 apt-get install --yes \
+    arping \
     arptables \
     avahi-daemon \
     curl \
