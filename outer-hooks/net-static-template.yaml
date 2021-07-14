@@ -7,3 +7,5 @@ ethernets:
     nameservers:
       addresses:
         - ${DNS}
+    dhcp6: false
+    link-local: []
